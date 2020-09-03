@@ -9,20 +9,14 @@ repositories {
 }
 
 dependencies {
-    if (findProperty('is_built_from_main_bookmap_project')) {
-        compile fileTree(dir: "${main_libs}", include: ['*.jar'])
-        compile project(':Level1Api')
-        compile project(':SimplifiedApiWrapper')
-    } else {
-        compileOnly group: 'com.bookmap.api', name: 'api-core', version: '7.1.0.50';
-        compileOnly group: 'com.bookmap.api', name: 'api-simplified', version: '7.1.0.50';
+    compileOnly group: 'com.bookmap.api', name: 'api-core', version: '7.1.0.50';
+    compileOnly group: 'com.bookmap.api', name: 'api-simplified', version: '7.1.0.50';
 
-        compileOnly group: 'org.apache.commons', name: 'commons-lang3', version: '3.4'
-    }
+    compileOnly group: 'org.apache.commons', name: 'commons-lang3', version: '3.4'
 }
 
 jar {
-    archiveName 'bm-strategies.jar'
+    archiveName 'bm-strategies-updated.jar'
 }
 
 eclipse.classpath.downloadJavadoc = true
