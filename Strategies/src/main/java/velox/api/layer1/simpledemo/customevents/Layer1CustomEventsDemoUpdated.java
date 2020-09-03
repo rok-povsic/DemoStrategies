@@ -36,6 +36,7 @@ import velox.api.layer1.layers.strategies.interfaces.Layer1IndicatorColorInterfa
 import velox.api.layer1.layers.strategies.interfaces.OnlineCalculatable;
 import velox.api.layer1.layers.strategies.interfaces.OnlineValueCalculatorAdapter;
 import velox.api.layer1.messages.GeneratedEventInfo;
+import velox.api.layer1.messages.Layer1ApiHistoricalDataLoadedMessage;
 import velox.api.layer1.messages.Layer1ApiUserMessageAddStrategyUpdateGenerator;
 import velox.api.layer1.messages.UserMessageLayersChainCreatedTargeted;
 import velox.api.layer1.messages.indicators.DataStructureInterface;
@@ -62,9 +63,9 @@ import velox.gui.colors.ColorsConfigItem;
  * create our own event generator, and then use our generated events to quickly calculate values on screen.
  */
 @Layer1Attachable
-@Layer1StrategyName("Custom Events Demo")
+@Layer1StrategyName("Custom Events Demo - Updated")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
-public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdminAdapter, OnlineCalculatable,
+public class Layer1CustomEventsDemoUpdated implements Layer1ApiFinishable, Layer1ApiAdminAdapter, OnlineCalculatable,
     Layer1CustomPanelsGetter, Layer1ConfigSettingsInterface, Layer1IndicatorColorInterface {
     private static class CustomTradePriceEvent implements CustomGeneratedEvent {
         private static final long serialVersionUID = 1L;
@@ -172,7 +173,7 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
     
     private Object locker = new Object();
     
-    public Layer1CustomEventsDemo(Layer1ApiProvider provider) {
+    public Layer1CustomEventsDemoUpdated(Layer1ApiProvider provider) {
         this.provider = provider;
         
         ListenableHelper.addListeners(provider, this);
@@ -192,10 +193,10 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
     @Override
     public void calculateValuesInRange(String indicatorName, String alias, long t0, long intervalWidth,
             int intervalsNumber, CalculatedResultListener listener) {
-        List<TreeResponseInterval> result = dataStructureInterface.get(Layer1CustomEventsDemo.class, TREE_NAME, t0,
+        List<TreeResponseInterval> result = dataStructureInterface.get(Layer1CustomEventsDemoUpdated.class, TREE_NAME, t0,
                 intervalWidth, intervalsNumber, alias, INTERESTING_CUSTOM_EVENTS);
         
-        TreeResponseInterval startValue = dataStructureInterface.get(Layer1CustomEventsDemo.class, TREE_NAME, t0, alias, INTERESTING_CUSTOM_EVENTS);
+        TreeResponseInterval startValue = dataStructureInterface.get(Layer1CustomEventsDemoUpdated.class, TREE_NAME, t0, alias, INTERESTING_CUSTOM_EVENTS);
         double currentValue = getValueFromEvent(startValue);
         
         for (int i = 1; i <= intervalsNumber; i++) {
@@ -218,7 +219,7 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
         
         invalidateInterfaceMap.put(INDICATOR_NAME, invalidateInterface);
         
-        TreeResponseInterval startEvents = dataStructureInterface.get(Layer1CustomEventsDemo.class, TREE_NAME, time, indicatorAlias, INTERESTING_CUSTOM_EVENTS);
+        TreeResponseInterval startEvents = dataStructureInterface.get(Layer1CustomEventsDemoUpdated.class, TREE_NAME, time, indicatorAlias, INTERESTING_CUSTOM_EVENTS);
         final double startValue = getValueFromEvent(startEvents);
         
         return new OnlineValueCalculatorAdapter() {
@@ -251,11 +252,19 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
                 provider.sendUserMessage(getIndicatorMessage(true));
             }
         }
+        if (data instanceof Layer1ApiHistoricalDataLoadedMessage) {
+            System.out.println("HISTORICAL DATA IS NOW LOADED!");
+            Layer1ApiHistoricalDataLoadedMessage message = (Layer1ApiHistoricalDataLoadedMessage) data;
+            new Thread(() -> {
+                provider.sendUserMessage(getGeneratorMessage(false));
+                provider.sendUserMessage(getGeneratorMessage(true));
+            }, "Re-register indicator because history added").start();
+        }
     }
     
 
     private Layer1ApiUserMessageAddStrategyUpdateGenerator getGeneratorMessage(boolean isAdd) {
-        return new Layer1ApiUserMessageAddStrategyUpdateGenerator(Layer1CustomEventsDemo.class, TREE_NAME, isAdd, true, new StrategyUpdateGenerator() {
+        return new Layer1ApiUserMessageAddStrategyUpdateGenerator(Layer1CustomEventsDemoUpdated.class, TREE_NAME, isAdd, true, true, new StrategyUpdateGenerator() {
             private Consumer<CustomGeneratedEventAliased> consumer;
             
             private long time = 0;
@@ -290,6 +299,7 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
             
             @Override
             public void onTrade(String alias, double price, int size, TradeInfo tradeInfo) {
+                System.out.println("generator onTrade: " + price + " " + size);
                 Double lastValue = aliasToCurrentValue.get(alias);
                 
                 if (lastValue == null) {
@@ -386,11 +396,11 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
     }
     
     private Layer1ApiUserMessageModifyIndicator getIndicatorMessage(boolean isAdd) {
-        return new Layer1ApiUserMessageModifyIndicator(Layer1CustomEventsDemo.class, INDICATOR_NAME, isAdd,
+        return new Layer1ApiUserMessageModifyIndicator(Layer1CustomEventsDemoUpdated.class, INDICATOR_NAME, isAdd,
                 new IndicatorColorScheme() {
                     @Override
                     public ColorDescription[] getColors() {
-                        return new ColorDescription[] {new ColorDescription(Layer1CustomEventsDemo.class, LINE_COLOR_NAME, LINE_COLOR_DEFAULT, false)};
+                        return new ColorDescription[] {new ColorDescription(Layer1CustomEventsDemoUpdated.class, LINE_COLOR_NAME, LINE_COLOR_DEFAULT, false)};
                     }
                     
                     @Override
@@ -403,7 +413,7 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
                         return LINE_COLOR_NAME;
                     }
                     
-                }, Layer1CustomEventsDemo.this, null, null, null, null, null, null, null, null, GraphType.PRIMARY, true, true, false, this, null);
+                }, Layer1CustomEventsDemoUpdated.this, null, null, null, null, null, null, null, null, GraphType.PRIMARY, true, true, false, this, null);
     }
     
     private CustomEventsDemoSettings getSettingsFor(String alias) {
@@ -439,7 +449,7 @@ public class Layer1CustomEventsDemo implements Layer1ApiFinishable, Layer1ApiAdm
                 color = LINE_COLOR_DEFAULT;
                 break;
             default:
-                Log.warn("Layer1CustomEventsDemo: unknown color name " + name);
+                Log.warn("Layer1CustomEventsDemoUpdated: unknown color name " + name);
                 color = Color.WHITE;
                 break;
             }
